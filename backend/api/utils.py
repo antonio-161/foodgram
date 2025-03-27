@@ -1,8 +1,7 @@
 import csv
-
-from django.http import HttpResponse
 from collections import defaultdict
 
+from django.http import HttpResponse
 from recipes.models import CustomUser, Ingredient
 
 

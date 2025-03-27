@@ -1,42 +1,26 @@
 import hashlib
+
 from django_filters.rest_framework import DjangoFilterBackend
+from recipes.models import CustomUser, Ingredient, Recipe, Subscription, Tag
 from rest_framework import status
 from rest_framework.authtoken.models import Token
 from rest_framework.decorators import action
 from rest_framework.filters import SearchFilter
 from rest_framework.generics import get_object_or_404
-from rest_framework.permissions import (
-    AllowAny, IsAuthenticated,
-)
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.viewsets import ViewSet, ReadOnlyModelViewSet, ModelViewSet
+from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet, ViewSet
 
 from .filters import RecipeFilter
 from .pagination import MainPagePagination
-from .permissions import (
-    IsAuthorOrAdmin,
-)
-from .serializers import (
-    AvatarSerializer,
-    CustomUserCreateSerializer,
-    CustomUserSerializer,
-    IngredientSerializer,
-    RecipeCreateUpdateSerializer,
-    RecipeListSerializer,
-    RecipeMinifiedSerializer,
-    SetPasswordSerializer,
-    SubscriptionSerializer,
-    TagSerializer,
-    TokenLoginSerializer,
-)
+from .permissions import IsAuthorOrAdmin
+from .serializers import (AvatarSerializer, CustomUserCreateSerializer,
+                          CustomUserSerializer, IngredientSerializer,
+                          RecipeCreateUpdateSerializer, RecipeListSerializer,
+                          RecipeMinifiedSerializer, SetPasswordSerializer,
+                          SubscriptionSerializer, TagSerializer,
+                          TokenLoginSerializer)
 from .utils import generate_shopping_list
-from recipes.models import (
-    CustomUser,
-    Ingredient,
-    Recipe,
-    Subscription,
-    Tag
-)
 
 
 class UserViewSet(ModelViewSet):

@@ -1,26 +1,19 @@
 import base64
 import uuid
-from PIL import Image
 from io import BytesIO
 
 from django.contrib.auth import authenticate
 from django.core.files.base import ContentFile
 from django.db import transaction
 from drf_extra_fields.fields import Base64ImageField
+from PIL import Image
+from recipes.models import (CustomUser, Favorite, Ingredient,
+                            IngredientInRecipe, Recipe, ShoppingCart,
+                            Subscription, Tag)
 from rest_framework import serializers
 from rest_framework.fields import ImageField
 
 from .mixins import IsSubscribedMixin
-from recipes.models import (
-    CustomUser,
-    Ingredient,
-    IngredientInRecipe,
-    Favorite,
-    Recipe,
-    ShoppingCart,
-    Subscription,
-    Tag
-)
 
 
 class CustomUserSerializer(serializers.ModelSerializer, IsSubscribedMixin):

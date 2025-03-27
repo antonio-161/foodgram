@@ -2,14 +2,8 @@ from django.contrib.auth.models import AbstractUser
 from django.core.validators import RegexValidator
 from django.db import models
 
-from .constants import (
-    EMAIL_MAX_LENGTH,
-    MU_MAX_LENGTH,
-    NAME_MAX_LENGTH,
-    PASSWORD_MAX_LENGTH,
-    RECIPE_MAX_LENGTH,
-    TAG_MAX_LENGTH,
-)
+from .constants import (EMAIL_MAX_LENGTH, MU_MAX_LENGTH, NAME_MAX_LENGTH,
+                        PASSWORD_MAX_LENGTH, RECIPE_MAX_LENGTH, TAG_MAX_LENGTH)
 
 
 class CustomUser(AbstractUser):

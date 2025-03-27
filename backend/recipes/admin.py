@@ -1,15 +1,7 @@
 from django.contrib import admin
 
-from .models import (
-    CustomUser,
-    Ingredient,
-    IngredientInRecipe,
-    Favorite,
-    Recipe,
-    ShoppingCart,
-    Subscription,
-    Tag,
-)
+from .models import (CustomUser, Favorite, Ingredient, IngredientInRecipe,
+                     Recipe, ShoppingCart, Subscription, Tag)
 
 
 class CustomUserAdmin(admin.ModelAdmin):
