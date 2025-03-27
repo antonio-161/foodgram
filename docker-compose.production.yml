@@ -1,0 +1,62 @@
+version: '3.3'
+
+volumes:
+  media:
+  static:
+  pg_data:
+
+services:
+  db:
+    container_name: foodgram-db
+    image: postgres:13.10
+    env_file: .env
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: always
+
+  backend:
+    container_name: foodgram-back
+    image: antonio161/foodgram-backend
+    volumes:
+      - media:/app/media
+      - static:/backend_static
+    env_file: .env
+    ports:
+      - "8000:8000"
+    command: >
+      sh -c "
+      python manage.py collectstatic --noinput &&
+      cp -r /app/collected_static/. /backend_static/static/ &&
+      python manage.py makemigrations &&
+      python manage.py migrate &&
+      gunicorn foodgram.wsgi:application --bind 0.0.0.0:8000"
+    depends_on:
+      - db
+    restart: always
+
+  frontend:
+    container_name: foodgram-front
+    image: antonio161/foodgram-frontend
+    env_file: .env
+    volumes:
+      - static:/frontend_static
+    command: cp -r /app/build/. /frontend_static
+    ports:
+      - "3000:3000"
+
+  nginx:
+    image: nginx:1.25.4
+    container_name: foodgram-proxy
+    ports:
+      - "8080:80"
+    volumes:
+      - ./infra/nginx.conf:/etc/nginx/conf.d/default.conf
+      - ./docs/:/usr/share/nginx/html/api/docs/
+      - media:/app/media
+      - static:/staticfiles
+    depends_on:
+      - backend
+      - frontend
+    restart: always
