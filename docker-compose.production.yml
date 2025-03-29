@@ -38,7 +38,7 @@ services:
 
   frontend:
     container_name: foodgram-front
-    build: antonio161/foodgram-frontend
+    build: antonio161/foodgram_frontend
     env_file: .env
     volumes:
       - static:/frontend_static
