@@ -38,7 +38,7 @@ services:
 
   frontend:
     container_name: foodgram-front
-    image: antonio161/foodgram-frontend
+    build: antonio161/foodgram-frontend
     env_file: .env
     volumes:
       - static:/frontend_static
@@ -53,7 +53,7 @@ services:
       - "8080:80"
     volumes:
       - ./infra/nginx.conf:/etc/nginx/conf.d/default.conf
-      - ./docs/:/usr/share/nginx/html/api/docs/
+      - ./docs/:/usr/share/nginx/html/docs
       - media:/app/media
       - static:/staticfiles
     depends_on:

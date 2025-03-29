@@ -1,7 +1,6 @@
 import hashlib
 
 from django_filters.rest_framework import DjangoFilterBackend
-from recipes.models import CustomUser, Ingredient, Recipe, Subscription, Tag
 from rest_framework import status
 from rest_framework.authtoken.models import Token
 from rest_framework.decorators import action
@@ -21,6 +20,7 @@ from .serializers import (AvatarSerializer, CustomUserCreateSerializer,
                           SubscriptionSerializer, TagSerializer,
                           TokenLoginSerializer)
 from .utils import generate_shopping_list
+from recipes.models import CustomUser, Ingredient, Recipe, Subscription, Tag
 
 
 class UserViewSet(ModelViewSet):
@@ -153,16 +153,8 @@ class UserViewSet(ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        if request.user == author:
-            return Response(
-                {'detail': 'Вы не можете подписаться или отписаться от себя'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
         if request.method == 'POST':
-            if Subscription.objects.filter(
-                follower=request.user, author=author
-            ).exists():
+            if request.user.subscriptions.filter(author=author).exists():
                 return Response(
                     {'detail': 'Вы уже подписаны на этого пользователя'},
                     status=status.HTTP_400_BAD_REQUEST
@@ -180,6 +172,13 @@ class UserViewSet(ModelViewSet):
                         {'detail': 'recipes_limit должен быть числом'},
                         status=status.HTTP_400_BAD_REQUEST
                     )
+            # Создание подписки через сериализатор
+            serializer = SubscriptionSerializer(
+                data={'follower': request.user, 'author': author},
+                context={'request': request, 'recipes_limit': recipes_limit}
+            )
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
 
             serializer = SubscriptionSerializer(
                 Subscription.objects.get(author=author, follower=request.user),
@@ -190,16 +189,18 @@ class UserViewSet(ModelViewSet):
         elif request.method == 'DELETE':
             try:
                 subscription = Subscription.objects.get(
-                    follower=request.user, author=author
+                    author=author, follower=request.user
+                )
+                subscription.delete()
+                return Response(
+                    {'detail': 'Подписка успешно удалена.'},
+                    status=status.HTTP_204_NO_CONTENT
                 )
             except Subscription.DoesNotExist:
                 return Response(
-                    {'detail': 'Вы не подписаны на этого пользователя'},
+                    {'detail': 'Вы не подписаны на этого пользователя.'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-
-            subscription.delete()
-            return Response(status=status.HTTP_204_NO_CONTENT)
 
         return Response(
             {'detail': 'Метод не поддерживается'},
@@ -384,11 +385,11 @@ class RecipeViewSet(ModelViewSet):
     def short_link(self, request, pk=None):
         """Получение короткой ссылки на рецепт."""
         recipe = get_object_or_404(Recipe, pk=pk)
-        base_url = request.build_absolute_uri('/').strip("/")
+        base_url = request.build_absolute_uri('/').strip('/')
         unique_hash = hashlib.md5(
-            f"recipe-{recipe.id}".encode()
+            f'recipe-{recipe.id}'.encode()
         ).hexdigest()[:3]
-        short_link = f"{base_url}/s/{unique_hash}"
+        short_link = f'{base_url}/s/{unique_hash}'
         response_data = {'short-link': short_link}
         return Response(response_data, status=status.HTTP_200_OK)
 

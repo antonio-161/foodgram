@@ -16,7 +16,10 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'my_secret_key')
 
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost 127.0.0.1').split()
+if DEBUG:
+    ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+else:
+    ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS').split()
 
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:3000',

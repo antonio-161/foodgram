@@ -1,9 +1,19 @@
 from django.contrib.auth.models import AbstractUser
-from django.core.validators import RegexValidator
+from django.core.validators import (
+    MaxValueValidator, MinValueValidator, RegexValidator
+)
 from django.db import models
 
-from .constants import (EMAIL_MAX_LENGTH, MU_MAX_LENGTH, NAME_MAX_LENGTH,
-                        PASSWORD_MAX_LENGTH, RECIPE_MAX_LENGTH, TAG_MAX_LENGTH)
+from .constants import (
+    EMAIL_MAX_LENGTH,
+    MAX_VALUE,
+    MIN_VALUE,
+    MU_MAX_LENGTH,
+    NAME_MAX_LENGTH,
+    PASSWORD_MAX_LENGTH,
+    RECIPE_MAX_LENGTH,
+    TAG_MAX_LENGTH
+)
 
 
 class CustomUser(AbstractUser):
@@ -109,6 +119,7 @@ class Tag(models.Model):
         verbose_name = 'Тег'
         verbose_name_plural = 'Теги'
         default_related_name = 'tags'
+        ordering = ('id',)
 
     def __str__(self):
         return self.name
@@ -133,9 +144,10 @@ class Ingredient(models.Model):
         verbose_name = 'Ингредиент'
         verbose_name_plural = 'Ингредиенты'
         default_related_name = 'ingredients'
+        ordering = ('id',)
 
     def __str__(self):
-        return f"{self.name} - {self.measurement_unit}"
+        return f'{self.name} - {self.measurement_unit}'
 
 
 class Recipe(models.Model):
@@ -161,7 +173,11 @@ class Recipe(models.Model):
         verbose_name='Изображение рецепта'
     )
     text = models.TextField(verbose_name='Описание рецепта')
-    cooking_time = models.PositiveIntegerField(
+    cooking_time = models.PositiveSmallIntegerField(
+        validators=[
+            MinValueValidator(MIN_VALUE),
+            MaxValueValidator(MAX_VALUE)
+        ],
         blank=False,
         null=False,
         verbose_name='Время приготовления (в минутах)'
@@ -199,7 +215,7 @@ class Recipe(models.Model):
     class Meta:
         verbose_name = 'Рецепт'
         verbose_name_plural = 'Рецепты'
-        ordering = ['id']
+        ordering = ('-created_at',)
 
     def __str__(self):
         return self.name
@@ -219,7 +235,11 @@ class IngredientInRecipe(models.Model):
         related_name='ingredient_in_recipe',
         verbose_name='Ингредиент'
     )
-    amount = models.PositiveIntegerField(
+    amount = models.PositiveSmallIntegerField(
+        validators=[
+            MinValueValidator(MIN_VALUE),
+            MaxValueValidator(MAX_VALUE)
+        ],
         verbose_name='Количество'
     )
 
@@ -227,12 +247,13 @@ class IngredientInRecipe(models.Model):
         verbose_name = 'Ингредиент в рецепте'
         verbose_name_plural = 'Ингредиенты в рецепте'
         unique_together = ('recipe', 'ingredient')
+        ordering = ('id',)
 
     def __str__(self):
         return (
-            f"{self.recipe.name}: "
-            f"{self.ingredient.name} - {self.amount} "
-            f"{self.ingredient.measurement_unit}"
+            f'{self.recipe.name}: '
+            f'{self.ingredient.name} - {self.amount} '
+            f'{self.ingredient.measurement_unit}'
         )
 
 
@@ -255,9 +276,10 @@ class Favorite(models.Model):
         verbose_name = 'Избранное'
         verbose_name_plural = 'Избранные рецепты'
         unique_together = ('user', 'recipe')
+        ordering = ('id',)
 
     def __str__(self):
-        return f"{self.user.username} добавил в избранное {self.recipe.name}"
+        return f'{self.user.username} добавил в избранное {self.recipe.name}'
 
 
 class ShoppingCart(models.Model):
@@ -279,10 +301,11 @@ class ShoppingCart(models.Model):
         verbose_name = 'Список покупок'
         verbose_name_plural = 'Списки покупок'
         unique_together = ('user', 'recipe')
+        ordering = ('id',)
 
     def __str__(self):
-        return f"{self.user.username} добавил {self.recipe.name}" \
-            "в список покупок"
+        return f'{self.user.username} добавил {self.recipe.name}' \
+            'в список покупок'
 
 
 class Subscription(models.Model):
@@ -290,13 +313,16 @@ class Subscription(models.Model):
     follower = models.ForeignKey(
         CustomUser,
         on_delete=models.CASCADE,
-        default=None,
+        null=False,
+        blank=False,
         related_name='subscriptions',
         verbose_name='Подписчик'
     )
     author = models.ForeignKey(
         CustomUser,
         on_delete=models.CASCADE,
+        null=False,
+        blank=False,
         related_name='subscribers',
         verbose_name='Автор'
     )
@@ -305,7 +331,7 @@ class Subscription(models.Model):
         verbose_name = 'Подписка'
         verbose_name_plural = 'Подписки'
         unique_together = ('follower', 'author')
-        ordering = ['id']
+        ordering = ('id',)
 
     def __str__(self):
-        return f"{self.follower.username} подписан на {self.author.username}"
+        return f'{self.follower.username} подписан на {self.author.username}'

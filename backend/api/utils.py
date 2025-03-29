@@ -1,45 +1,48 @@
 import csv
 from collections import defaultdict
+from http import HTTPStatus
 
+from django.db.models import Sum
 from django.http import HttpResponse
-from recipes.models import CustomUser, Ingredient
+
+from recipes.models import CustomUser, Ingredient, IngredientInRecipe
 
 
 def generate_shopping_list(user):
     """Генерация списка покупок для текущего пользователя."""
 
     if not user.is_authenticated:
-        return HttpResponse("Вы не авторизованы!", status=401)
+        return HttpResponse(
+            'Вы не авторизованы!', status=HTTPStatus.UNAUTHORIZED
+        )
 
     # Собираем список рецептов, добавленных в список покупок пользователя
     shopping_cart = user.shopping_cart.all()
 
     # Хранилище для ингредиентов и их сумм
     ingredients = defaultdict(
-        lambda: {"name": "", "measurement_unit": "", "amount": 0}
+        lambda: {'name': '', 'measurement_unit': '', 'amount': 0}
     )
 
     # Проходим по каждому рецепту в списке покупок
-    for recipe in shopping_cart:
-        for relation in recipe.ingredient_in_recipe.all():
-            ingredient = relation.ingredient
-            amount = relation.amount
-            if ingredient.id not in ingredients:
-                ingredients[ingredient.id] = {
-                    "name": ingredient.name,
-                    "measurement_unit": ingredient.measurement_unit,
-                    "amount": amount,
-                }
-            else:
-                ingredients[ingredient.id]["amount"] += amount
+    ingredients = (
+        IngredientInRecipe.objects.filter(recipe__in=shopping_cart)
+        .values(
+            'ingredient_id',  # ID ингредиента
+            'ingredient__name',  # Имя ингредиента
+            'ingredient__measurement_unit'  # Единица измерения
+        )
+        .annotate(total_amount=Sum('amount'))  # Суммируем количество
+        .order_by('ingredient__name')  # Сортируем по имени ингредиента
+    )
 
     # Формируем текст для списка покупок
-    shopping_list_text = "Ваш список покупок:\n\n"
-    for ingredient in ingredients.values():
+    shopping_list_text = 'Ваш список покупок:\n\n'
+    for ingredient in ingredients:
         shopping_list_text += (
-            f"- {ingredient['name']} "
-            f"({ingredient['measurement_unit']}) — "
-            f"{ingredient['amount']}\n"
+            f'- {ingredient["ingredient__name"]} '
+            f'({ingredient["ingredient__measurement_unit"]}) — '
+            f'{ingredient["total_amount"]}\n'
         )
 
     return shopping_list_text

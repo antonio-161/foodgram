@@ -2,18 +2,26 @@ import base64
 import uuid
 from io import BytesIO
 
+from PIL import Image
 from django.contrib.auth import authenticate
 from django.core.files.base import ContentFile
 from django.db import transaction
 from drf_extra_fields.fields import Base64ImageField
-from PIL import Image
-from recipes.models import (CustomUser, Favorite, Ingredient,
-                            IngredientInRecipe, Recipe, ShoppingCart,
-                            Subscription, Tag)
 from rest_framework import serializers
 from rest_framework.fields import ImageField
 
 from .mixins import IsSubscribedMixin
+from recipes.constants import MAX_VALUE, MIN_VALUE
+from recipes.models import (
+    CustomUser,
+    Ingredient,
+    IngredientInRecipe,
+    Favorite,
+    Recipe,
+    ShoppingCart,
+    Subscription,
+    Tag
+)
 
 
 class CustomUserSerializer(serializers.ModelSerializer, IsSubscribedMixin):
@@ -82,14 +90,14 @@ class SetPasswordSerializer(serializers.Serializer):
         """Проверка текущего пароля пользователя."""
         user = self.context['request'].user
         if not user.check_password(value):
-            raise serializers.ValidationError("Текущий пароль неверный.")
+            raise serializers.ValidationError('Текущий пароль неверный.')
         return value
 
     def validate_new_password(self, value):
         """Проверка нового пароля пользователя."""
         if value == self.initial_data.get('current_password'):
             raise serializers.ValidationError(
-                "Новый пароль не должен совпадать с текущим."
+                'Новый пароль не должен совпадать с текущим.'
             )
         return value
 
@@ -100,7 +108,7 @@ class TokenLoginSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True)
 
     class Meta:
-        non_fields_errors_key = "detail"
+        non_fields_errors_key = 'detail'
 
     def validate(self, data):
         """Проверка учетных данных пользователя."""
@@ -109,11 +117,11 @@ class TokenLoginSerializer(serializers.Serializer):
         user = authenticate(username=email, password=password)
         if not user:
             raise serializers.ValidationError(
-                {"detail": "Неверный email или пароль."}
+                {'detail': 'Неверный email или пароль.'}
             )
         if not user.is_active:
             raise serializers.ValidationError(
-                {"detail": "Учетная запись отключена."}
+                {'detail': 'Учетная запись отключена.'}
             )
         data['user'] = user
         return data
@@ -137,12 +145,14 @@ class IngredientSerializer(serializers.ModelSerializer):
 
 class IngredientInRecipeSerializer(serializers.ModelSerializer):
     """Сериализатор для модели IngredientInRecipe."""
-    id = serializers.PrimaryKeyRelatedField(queryset=Ingredient.objects.all())
+    id = serializers.IntegerField()
     name = serializers.CharField(source='ingredient.name', read_only=True)
     measurement_unit = serializers.CharField(
         source='ingredient.measurement_unit', read_only=True
     )
-    amount = serializers.IntegerField()
+    amount = serializers.IntegerField(
+        max_value=MAX_VALUE, min_value=MIN_VALUE
+    )
 
     class Meta:
         model = IngredientInRecipe
@@ -207,7 +217,7 @@ class Base64ImageField(ImageField):
             decoded_file = base64.b64decode(imgstr)
 
             # Генерируем уникальное имя файла
-            filename = f"{uuid.uuid4()}.{ext}"
+            filename = f'{uuid.uuid4()}.{ext}'
 
             # Проверяем тип файла через Pillow
             try:
@@ -215,23 +225,23 @@ class Base64ImageField(ImageField):
                 file_type = image.format.lower()
                 allowed_formats = ['jpeg', 'jpg', 'png', 'gif']
                 if file_type not in allowed_formats:
-                    raise ValueError(f"Недопустимый тип файла: {file_type}")
+                    raise ValueError(f'Недопустимый тип файла: {file_type}')
 
                 if (
                     file_type != ext
                     and not (file_type == 'jpeg' and ext == 'jpg')
                 ):
                     raise ValueError(
-                        f"Тип содержимого ({file_type}) не соответствует "
-                        f"расширению ({ext})!"
+                        f'Тип содержимого ({file_type}) не соответствует '
+                        f'расширению ({ext})!'
                     )
 
             except Exception:
-                raise ValueError("Не удалось определить тип файла!")
+                raise ValueError('Не удалось определить тип файла!')
 
             # Проверяем корректность типа файла
             if file_type != ext:
-                raise ValueError("Тип файла не соответствует содержимому!")
+                raise ValueError('Тип файла не соответствует содержимому!')
 
             # Возвращаем объект ContentFile
             data = ContentFile(decoded_file, name=filename)
@@ -245,14 +255,18 @@ class RecipeCreateUpdateSerializer(serializers.ModelSerializer):
         default=serializers.CurrentUserDefault(),
         read_only=True
     )
-    ingredients = serializers.ListField(
-        child=serializers.DictField(child=serializers.IntegerField())
+    ingredients = IngredientInRecipeSerializer(
+        many=True,
+        source='ingredient_in_recipe'
     )
     tags = serializers.PrimaryKeyRelatedField(
         queryset=Tag.objects.all(),
         many=True,
     )
     image = Base64ImageField()
+    cooking_time = serializers.IntegerField(
+        max_value=MAX_VALUE, min_value=MIN_VALUE
+    )
 
     class Meta:
         model = Recipe
@@ -267,14 +281,6 @@ class RecipeCreateUpdateSerializer(serializers.ModelSerializer):
             'author'
         )
 
-    def validate_cooking_time(self, value):
-        """Проверяет, что время приготовления больше или равно 1."""
-        if value <= 1:
-            raise serializers.ValidationError(
-                "Время приготовления должно быть не менее 1 минуты."
-            )
-        return value
-
     def validate_ingredients(self, value):
         """
         Проверяет:
@@ -286,7 +292,7 @@ class RecipeCreateUpdateSerializer(serializers.ModelSerializer):
         """
         if not value:
             raise serializers.ValidationError(
-                "Список ингредиентов не может быть пустым."
+                'Список ингредиентов не может быть пустым.'
             )
 
         ingredient_ids = [item['id'] for item in value]
@@ -300,16 +306,12 @@ class RecipeCreateUpdateSerializer(serializers.ModelSerializer):
         for item in value:
             if item['id'] not in existing_ingredients:
                 raise serializers.ValidationError(
-                    f"Ингредиент с ID {item['id']} не существует."
-                )
-            if item['amount'] <= 0:
-                raise serializers.ValidationError(
-                    "Количество ингредиента должно быть больше 0."
+                    f'Ингредиент с ID {item["id"]} не существует.'
                 )
             if item['id'] in unique_ids:
                 raise serializers.ValidationError(
-                    f"Ингредиент с ID {item['id']} "
-                    "встречается более одного раза."
+                    f'Ингредиент с ID {item["id"]} '
+                    'встречается более одного раза.'
                 )
 
             unique_ids.add(item['id'])
@@ -324,18 +326,18 @@ class RecipeCreateUpdateSerializer(serializers.ModelSerializer):
         """
         if not value:
             raise serializers.ValidationError(
-                "Поле тегов не может быть пустым."
+                'Поле тегов не может быть пустым.'
             )
 
         if len(set(value)) != len(value):
-            raise serializers.ValidationError("Список тегов содержит дубли.")
+            raise serializers.ValidationError('Список тегов содержит дубли.')
 
         return value
 
     def validate_image(self, value):
         """Проверяет, что изображение передано."""
         if not value:
-            raise serializers.ValidationError("Изображение обязательно.")
+            raise serializers.ValidationError('Изображение обязательно.')
         return value
 
     def _save_ingredients(self, recipe, ingredients):
@@ -355,7 +357,7 @@ class RecipeCreateUpdateSerializer(serializers.ModelSerializer):
         """Создает рецепт."""
         validated_data['author'] = self.context['request'].user
         tags = validated_data.pop('tags', [])
-        ingredients = validated_data.pop('ingredients', [])
+        ingredients = validated_data.pop('ingredient_in_recipe', [])
         recipe = Recipe.objects.create(**validated_data)
         recipe.tags.set(tags)
         self._save_ingredients(recipe, ingredients)
@@ -370,14 +372,14 @@ class RecipeCreateUpdateSerializer(serializers.ModelSerializer):
             instance.tags.set(tags)
         else:
             raise serializers.ValidationError(
-                "Поле тегов не может быть пустым."
+                'Поле тегов не может быть пустым.'
             )
 
         if ingredients:
             self._save_ingredients(instance, ingredients)
         else:
             raise serializers.ValidationError(
-                "Поле ингредиентов не может быть пустым."
+                'Поле ингредиентов не может быть пустым.'
             )
         return super().update(instance, validated_data)
 
@@ -432,4 +434,4 @@ class SubscriptionSerializer(serializers.ModelSerializer, IsSubscribedMixin):
 
     def get_recipes_count(self, obj):
         """Получение количества рецептов автора."""
-        return Recipe.objects.filter(author=obj.author).count()
+        return obj.author.recipes.count()
