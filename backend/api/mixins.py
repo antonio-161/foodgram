@@ -1,6 +1,3 @@
-from recipes.models import Subscription
-
-
 class IsSubscribedMixin:
     def get_is_subscribed(self, obj):
         """
@@ -15,8 +12,9 @@ class IsSubscribedMixin:
                     else obj == request.user):
                 return False
             # Проверка на подписку на другого автора
-            return Subscription.objects.filter(
-                author=obj.author if hasattr(obj, 'author') else obj,
+            return obj.author.subscriptions.filter(
+                follower=request.user
+            ).exists() if hasattr(obj, 'author') else obj.subscriptions.filter(
                 follower=request.user
             ).exists()
         return False
