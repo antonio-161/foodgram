@@ -22,11 +22,9 @@ else:
     ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS').split()
 
 CORS_ALLOWED_ORIGINS = [
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
+    'http://62.84.120.29:8080',
+    'https://foodgram-161.zapto.org',
 ]
-
-CORS_ALLOW_ALL_ORIGINS = True
 
 INSTALLED_APPS = [
     'django.contrib.admin',
